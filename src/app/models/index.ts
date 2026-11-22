@@ -24,4 +24,9 @@ export type {
   ReportTargetType,
   ReportUpdate,
 } from './report.model';
+export type {
+  Category,
+  CategoryInput,
+  Subcategory,
+} from './category.model';
 export type { PageParams, PaginatedResponse } from './paginated.model';

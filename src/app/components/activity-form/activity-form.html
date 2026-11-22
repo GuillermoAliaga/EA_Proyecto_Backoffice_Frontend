@@ -27,22 +27,128 @@
     </label>
 
     <div class="form-grid">
-      <label>
-        Categoría *
-        <select formControlName="category">
-          @for (category of categories; track category) {
-            <option [value]="category">{{ category }}</option>
+      <!-- Desplegable interactivo de Categoría -->
+      <div class="field-group">
+        <span class="field-label">Categoría *</span>
+        <div class="custom-select">
+          <button
+            type="button"
+            class="select-trigger"
+            (click)="categoryMenuOpen.set(!categoryMenuOpen()); subcategoryMenuOpen.set(false)"
+          >
+            <span>{{ selectedCategoryLabel() }}</span>
+            <span>▾</span>
+          </button>
+
+          @if (categoryMenuOpen()) {
+            <div class="select-dropdown">
+              @for (cat of categories(); track cat._id) {
+                <div
+                  class="select-option"
+                  role="button"
+                  tabindex="0"
+                  [class.active]="cat.slug === form.controls.category.value"
+                  (click)="selectCategory(cat)"
+                  (keydown.enter)="selectCategory(cat)"
+                >
+                  <span>{{ cat.name }} <small class="muted">({{ cat.slug }})</small></span>
+                  <button
+                    type="button"
+                    class="btn-remove-opt"
+                    title="Archivar categoría"
+                    [disabled]="catalogBusy()"
+                    (click)="archiveCategory($event, cat)"
+                  >
+                    ✕
+                  </button>
+                </div>
+              }
+
+              <div class="select-add-row">
+                <input
+                  type="text"
+                  placeholder="Nueva categoría (ej. Pádel)"
+                  [value]="newCategoryName()"
+                  (input)="newCategoryName.set($any($event.target).value)"
+                  (keydown.enter)="$event.preventDefault(); createCategory()"
+                />
+                <button
+                  type="button"
+                  (click)="createCategory()"
+                  [disabled]="catalogBusy() || newCategoryName().trim().length < 2"
+                >
+                  + Añadir
+                </button>
+              </div>
+            </div>
           }
-        </select>
-      </label>
-      <label>
-        Subcategoría *
-        <select formControlName="subcategory">
-          @for (subcategory of subcategories; track subcategory) {
-            <option [value]="subcategory">{{ subcategory }}</option>
+        </div>
+      </div>
+
+      <!-- Desplegable interactivo de Subcategoría -->
+      <div class="field-group">
+        <span class="field-label">Subcategoría *</span>
+        <div class="custom-select">
+          <button
+            type="button"
+            class="select-trigger"
+            [disabled]="!selectedCategory()"
+            (click)="subcategoryMenuOpen.set(!subcategoryMenuOpen()); categoryMenuOpen.set(false)"
+          >
+            <span>{{ selectedSubcategoryLabel() }}</span>
+            <span>▾</span>
+          </button>
+
+          @if (subcategoryMenuOpen()) {
+            <div class="select-dropdown">
+              @for (sub of availableSubcategories(); track sub.slug) {
+                <div
+                  class="select-option"
+                  role="button"
+                  tabindex="0"
+                  [class.active]="sub.slug === form.controls.subcategory.value"
+                  (click)="selectSubcategory(sub)"
+                  (keydown.enter )="selectSubcategory(sub)"
+                >
+                  <span>{{ sub.name }} <small class="muted">({{ sub.slug }})</small></span>
+                  <button
+                    type="button"
+                    class="btn-remove-opt"
+                    title="Eliminar subcategoría"
+                    [disabled]="catalogBusy()"
+                    (click)="archiveSubcategory($event, sub)"
+                  >
+                    ✕
+                  </button>
+                </div>
+              } @empty {
+                <p class="muted empty-opt">Sin subcategorías. Añade una abajo.</p>
+              }
+
+              <div class="select-add-row">
+                <input
+                  type="text"
+                  placeholder="Nueva subcategoría (ej. Dobles)"
+                  [value]="newSubcategoryName()"
+                  (input)="newSubcategoryName.set($any($event.target).value)"
+                  (keydown.enter)="$event.preventDefault(); createSubcategory()"
+                />
+                <button
+                  type="button"
+                  (click)="createSubcategory()"
+                  [disabled]="catalogBusy() || newSubcategoryName().trim().length < 2"
+                >
+                  + Añadir
+                </button>
+              </div>
+            </div>
           }
-        </select>
-      </label>
+        </div>
+        @if (!form.controls.subcategory.value) {
+          <small class="field-error">Selecciona o crea una subcategoría.</small>
+        }
+      </div>
+
       <label>
         Modalidad *
         <select formControlName="modality">
