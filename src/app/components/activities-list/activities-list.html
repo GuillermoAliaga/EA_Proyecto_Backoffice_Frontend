@@ -1,6 +1,6 @@
 <div class="page-header">
   <h1>Actividades</h1>
-  @if (auth.canPublishActivities()) {
+  @if (auth.isAdmin()) {
     <a class="button" routerLink="/activities/new">Nueva actividad</a>
   }
 </div>
@@ -14,16 +14,14 @@
     [ngModel]="search()"
     (ngModelChange)="onSearchChange($event)"
   />
-  @if (auth.isAdmin()) {
-    <label class="inline-filter">
-      <input
-        type="checkbox"
-        [ngModel]="showDeleted()"
-        (ngModelChange)="onDeletedFilterChange($event)"
-      />
-      Mostrar archivadas
-    </label>
-  }
+  <label class="inline-filter">
+    <input
+      type="checkbox"
+      [ngModel]="showDeleted()"
+      (ngModelChange)="onDeletedFilterChange($event)"
+    />
+    Mostrar archivadas
+  </label>
   <select
     aria-label="Filtrar actividades por estado"
     [ngModel]="statusFilter()"
@@ -37,7 +35,7 @@
   </select>
 </div>
 
-@if (auth.isAdmin() && selectedIds().size > 0) {
+@if (selectedIds().size > 0) {
   <div class="bulk-actions">
     <span>{{ selectedIds().size }} seleccionada(s)</span>
     <button
@@ -69,16 +67,14 @@
   <table>
     <thead>
       <tr>
-        @if (auth.isAdmin()) {
-          <th>
-            <input
-              type="checkbox"
-              aria-label="Seleccionar todas las actividades de esta página"
-              [checked]="isAllSelected()"
-              (change)="toggleSelectAll($event)"
-            />
-          </th>
-        }
+        <th>
+          <input
+            type="checkbox"
+            aria-label="Seleccionar todas las actividades de esta página"
+            [checked]="isAllSelected()"
+            (change)="toggleSelectAll($event)"
+          />
+        </th>
         <th [attr.aria-sort]="sortBy() === 'title' ? (sortOrder() === 'asc' ? 'ascending' : 'descending') : 'none'">
           <button type="button" class="sort-button" (click)="sort('title')">Título ↕</button>
         </th>
@@ -89,26 +85,20 @@
         </th>
         <th>Estado</th>
         <th>Registro</th>
-        @if (auth.isAdmin()) {
-          <th>Acciones</th>
-        } @else if (auth.user()?.role === 'USER') {
-          <th>Inscripción</th>
-        }
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
       @for (activity of activities(); track activity._id) {
         <tr>
-          @if (auth.isAdmin()) {
-            <td>
-              <input
-                type="checkbox"
-                [attr.aria-label]="'Seleccionar actividad ' + activity.title"
-                [checked]="selectedIds().has(activity._id)"
-                (change)="toggleSelected(activity._id, $event)"
-              />
-            </td>
-          }
+          <td>
+            <input
+              type="checkbox"
+              [attr.aria-label]="'Seleccionar actividad ' + activity.title"
+              [checked]="selectedIds().has(activity._id)"
+              (change)="toggleSelected(activity._id, $event)"
+            />
+          </td>
           <td>{{ activity.title }}</td>
           <td>{{ activity.description || '—' }}</td>
           <td>{{ activity.category }} · {{ activity.subcategory }}</td>
@@ -122,56 +112,37 @@
               {{ activity.deleted ? 'Archivada' : 'Activa' }}
             </span>
           </td>
-          @if (auth.isAdmin()) {
-            <td class="actions">
-              <a class="button secondary" [routerLink]="['/activities', activity._id, 'edit']">Editar</a>
-              @if (activity.deleted) {
-                <button
-                  type="button"
-                  class="secondary"
-                  [disabled]="restoringIds().has(activity._id)"
-                  (click)="restoreActivity(activity)"
-                >
-                  {{ restoringIds().has(activity._id) ? 'Restaurando...' : 'Desarchivar' }}
-                </button>
-              } @else {
-                <button
-                  type="button"
-                  class="danger"
-                  (click)="requestDelete([activity._id], false)"
-                >
-                  Archivar
-                </button>
-              }
+          <td class="actions">
+            <a class="button secondary" [routerLink]="['/activities', activity._id, 'edit']">Editar</a>
+            @if (activity.deleted) {
+              <button
+                type="button"
+                class="secondary"
+                [disabled]="restoringIds().has(activity._id)"
+                (click)="restoreActivity(activity)"
+              >
+                {{ restoringIds().has(activity._id) ? 'Restaurando...' : 'Desarchivar' }}
+              </button>
+            } @else {
               <button
                 type="button"
                 class="danger"
-                (click)="requestDelete([activity._id], true)"
+                (click)="requestDelete([activity._id], false)"
               >
-                Eliminar
+                Archivar
               </button>
-            </td>
-          } @else if (auth.user()?.role === 'USER') {
-            <td>
-              @if (isJoined(activity)) {
-                <span>Ya estás apuntado</span>
-                <a class="button secondary" routerLink="/chat">Abrir chat</a>
-              } @else if (activity.status === 'OPEN') {
-                <button
-                  type="button"
-                  [disabled]="joiningIds().has(activity._id)"
-                  (click)="join(activity)"
-                >
-                  {{ joiningIds().has(activity._id) ? 'Apuntando...' : 'Apuntarme' }}
-                </button>
-              } @else {
-                <span>No disponible</span>
-              }
-            </td>
-          }
+            }
+            <button
+              type="button"
+              class="danger"
+              (click)="requestDelete([activity._id], true)"
+            >
+              Eliminar
+            </button>
+          </td>
         </tr>
       } @empty {
-        <tr><td class="empty" [attr.colspan]="auth.isAdmin() ? 8 : (auth.user()?.role === 'USER' ? 7 : 6)">No hay actividades para mostrar.</td></tr>
+        <tr><td class="empty" colspan="8">No hay actividades para mostrar.</td></tr>
       }
     </tbody>
   </table>
@@ -179,9 +150,7 @@
   <app-pagination [page]="page()" [totalPages]="totalPages()" (pageChange)="onPageChange($event)" />
 }
 
-@if (auth.isAdmin()) {
-  <app-confirm-modal
-    (confirmed)="confirmDelete()"
-    (cancelled)="pendingDelete.set(null)"
-  />
-}
+<app-confirm-modal
+  (confirmed)="confirmDelete()"
+  (cancelled)="pendingDelete.set(null)"
+/>

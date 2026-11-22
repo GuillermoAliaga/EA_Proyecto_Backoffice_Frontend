@@ -1,28 +1,12 @@
-<!-- auth.user() es una signal: si cambia la sesión, esta plantilla se actualiza sola -->
 @if (auth.user(); as user) {
-  <h1>Hola, {{ user.name }}</h1>
-  <p class="muted">Has iniciado sesión como {{ user.email }} con el rol {{ user.role }}.</p>
+  <h1>Panel de Administración</h1>
+  <p class="muted">Sesión iniciada como <strong>{{ user.name }}</strong> ({{ user.email }}) · Rol: {{ user.role }}</p>
 
-  <p>Puedes hablar con el resto de usuarios en el chat: general, de grupo o directo.</p>
+  <p>Selecciona un módulo para gestionar la plataforma:</p>
   <div class="form-actions">
-    <a class="button" routerLink="/chat">Ir al chat</a>
-    <a class="button" routerLink="/activities">Ver actividades</a>
-    <a class="button secondary" routerLink="/reports/new">Crear reporte</a>
+    <a class="button" routerLink="/users">Gestionar Usuarios</a>
+    <a class="button" routerLink="/activities">Gestionar Actividades</a>
+    <a class="button" routerLink="/reports">Revisar Reportes</a>
+    <a class="button secondary" routerLink="/chat">Chat</a>
   </div>
-
-  @if (auth.isAdmin()) {
-    <p>Desde el panel puedes gestionar usuarios, actividades y reportes:</p>
-    <div class="form-actions">
-      <a class="button" routerLink="/users">Usuarios</a>
-      <a class="button" routerLink="/activities">Actividades</a>
-      <a class="button" routerLink="/reports">Reportes</a>
-    </div>
-  } @else if (auth.canPublishActivities()) {
-    <p>Como anfitrión de tienda, puedes publicar nuevas actividades:</p>
-    <div class="form-actions">
-      <a class="button" routerLink="/activities/new">Publicar actividad</a>
-    </div>
-  } @else {
-    <p>Desde aquí puedes consultar las actividades disponibles.</p>
-  }
 }
