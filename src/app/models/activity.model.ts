@@ -1,6 +1,6 @@
 // Valores permitidos para clasificar y mostrar una actividad.
-export type ActivityCategory = 'SPORT' | 'LEISURE';
-export type ActivitySubcategory = 'BASKETBALL' | 'RUNNING' | 'ARCADE' | 'TCG_BOARDGAMES';
+export type ActivityCategory = string;
+export type ActivitySubcategory = string;
 export type ActivityModality = 'CASUAL' | 'ORGANIZED';
 export type ActivityStatus = 'OPEN' | 'FULL' | 'COMPLETED' | 'CANCELLED';
 
