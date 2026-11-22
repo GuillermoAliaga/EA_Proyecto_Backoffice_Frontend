@@ -23,6 +23,12 @@ import { ActivityService } from '../../services/activity.service';
 import { CategoryService } from '../../services/category.service';
 import { apiErrorMessage } from '../../utils/api-error';
 
+interface AddressSuggestion {
+  label: string;
+  lat: number;
+  lon: number;
+}
+
 function toLocalDateTime(value?: string): string {
   if (!value) return '';
   const date = new Date(value);
@@ -35,6 +41,15 @@ function validateSchedule(control: AbstractControl): ValidationErrors | null {
   const endTime = control.get('endTime')?.value;
   if (!startTime || !endTime) return null;
   return new Date(endTime) > new Date(startTime) ? null : { invalidSchedule: true };
+}
+
+function validateCoordinatesPair(control: AbstractControl): ValidationErrors | null {
+  const lat = control.get('latitude')?.value;
+  const lng = control.get('longitude')?.value;
+  const hasLat = lat !== null && lat !== undefined && lat !== '';
+  const hasLng = lng !== null && lng !== undefined && lng !== '';
+  if (hasLat === hasLng) return null;
+  return { incompleteCoordinates: true };
 }
 
 function toSlug(text: string): string {
@@ -62,6 +77,7 @@ export class ActivityForm implements OnInit {
   id = input<string>();
   loading = signal(false);
   saving = signal(false);
+  geocoding = signal(false);
   loadFailed = signal(false);
   error = signal('');
 
@@ -75,6 +91,10 @@ export class ActivityForm implements OnInit {
   // Inputs inline para añadir categoría o subcategoría desde el propio desplegable
   newCategoryName = signal('');
   newSubcategoryName = signal('');
+
+  // Autocompletado de direcciones
+  addressSuggestions = signal<AddressSuggestion[]>([]);
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   selectedCategory = computed(
     () => this.categories().find((c) => c.slug === this.selectedCategorySlug()) ?? null
@@ -95,14 +115,12 @@ export class ActivityForm implements OnInit {
       subcategory: ['' as ActivitySubcategory, Validators.required],
       modality: ['CASUAL' as ActivityModality, Validators.required],
       status: ['OPEN' as ActivityStatus, Validators.required],
-      addressName: ['', Validators.required],
+      addressName: ['', [Validators.required, Validators.minLength(3)]],
       latitude: this.fb.control<number | null>(null, [
-        Validators.required,
         Validators.min(-90),
         Validators.max(90),
       ]),
       longitude: this.fb.control<number | null>(null, [
-        Validators.required,
         Validators.min(-180),
         Validators.max(180),
       ]),
@@ -113,7 +131,7 @@ export class ActivityForm implements OnInit {
       price: this.fb.control(0, [Validators.required, Validators.min(0)]),
       prizeInfo: [''],
     },
-    { validators: validateSchedule }
+    { validators: [validateSchedule, validateCoordinatesPair] }
   );
 
   ngOnInit(): void {
@@ -264,6 +282,68 @@ export class ActivityForm implements OnInit {
     return found ? `${found.name} (${found.slug})` : 'Selecciona subcategoría...';
   }
 
+  onAddressInput(value: string): void {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    const query = value.trim();
+    if (query.length < 3) {
+      this.addressSuggestions.set([]);
+      return;
+    }
+
+    this.searchTimer = setTimeout(() => {
+      this.geocoding.set(true);
+      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
+
+      fetch(url)
+        .then((res) => res.json())
+        .then((data: {
+          features?: {
+            geometry: { coordinates: [number, number] };
+            properties: {
+              name?: string;
+              street?: string;
+              housenumber?: string;
+              postcode?: string;
+              city?: string;
+              town?: string;
+              village?: string;
+              state?: string;
+            };
+          }[];
+        }) => {
+          const items: AddressSuggestion[] = (data.features ?? []).map((f) => {
+            const p = f.properties;
+            const streetPart = [p.street || p.name, p.housenumber].filter(Boolean).join(' ');
+            const cityPart = p.city || p.town || p.village || '';
+            const label = [streetPart, p.postcode, cityPart, p.state]
+              .filter(Boolean)
+              .join(', ');
+            return {
+              label: label || query,
+              lon: Number(f.geometry.coordinates[0].toFixed(6)),
+              lat: Number(f.geometry.coordinates[1].toFixed(6)),
+            };
+          });
+          this.addressSuggestions.set(items);
+        })
+        .catch(() => {
+          this.addressSuggestions.set([]);
+        })
+        .finally(() => {
+          this.geocoding.set(false);
+        });
+    }, 350);
+  }
+
+  selectAddressSuggestion(item: AddressSuggestion): void {
+    this.form.patchValue({
+      addressName: item.label,
+      latitude: item.lat,
+      longitude: item.lon,
+    });
+    this.addressSuggestions.set([]);
+  }
+
   save(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -271,7 +351,7 @@ export class ActivityForm implements OnInit {
     }
 
     const values = this.form.getRawValue();
-    if (values.latitude === null || values.longitude === null) return;
+    const hasCoordinates = values.latitude !== null && values.longitude !== null;
 
     const payload: ActivityInput = {
       title: values.title.trim(),
@@ -282,7 +362,7 @@ export class ActivityForm implements OnInit {
       status: values.status,
       location: {
         type: 'Point',
-        coordinates: [values.longitude, values.latitude],
+        ...(hasCoordinates ? { coordinates: [values.longitude!, values.latitude!] } : {}),
         addressName: values.addressName.trim(),
         isStoreLocation: false,
       },

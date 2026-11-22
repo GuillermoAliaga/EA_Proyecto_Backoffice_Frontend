@@ -31,6 +31,11 @@ legend {
   position: relative;
 }
 
+.custom-select input[type='text'] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .select-trigger {
   width: 100%;
   display: flex;

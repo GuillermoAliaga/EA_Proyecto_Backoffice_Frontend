@@ -15,8 +15,8 @@ export interface Activity {
   modality: ActivityModality;
   status: ActivityStatus;
   location: {
-    type: 'Point';
-    coordinates: [number, number];
+    type?: 'Point';
+    coordinates?: [number, number];
     addressName: string;
     isStoreLocation: boolean;
   };
