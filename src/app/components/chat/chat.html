@@ -1,8 +1,8 @@
 <section class="chat-page" aria-labelledby="chat-title">
   <header class="chat-header">
     <div>
-      <h1 id="chat-title">Chat</h1>
-      <p class="muted">Conversaciones en tiempo real.</p>
+      <h1 id="chat-title">Chat interno de administración</h1>
+      <p class="muted">Tablón compartido para notas de moderación y mensajes directos entre administradores.</p>
     </div>
 
     <p class="connection-status" [class.connected]="connected()" role="status">
@@ -11,11 +11,9 @@
     </p>
   </header>
 
-  <!-- Quién tiene el chat abierto ahora mismo. El servidor avisa (users:online) cada vez que
-       alguien entra o sale, y la lista se actualiza sola -->
   <section class="people" aria-labelledby="people-title">
     <h2 id="people-title" class="people-title">
-      Usuarios <span class="muted">· {{ onlineCount() }} en el chat</span>
+      Administradores <span class="muted">· {{ onlineCount() }} conectados</span>
     </h2>
     <ul class="people-list">
       @if (me(); as me) {
@@ -33,14 +31,14 @@
             class="person"
             [class.online]="person.online"
             [title]="
-              (person.online ? 'En el chat' : 'No está en el chat') + ' · abrir chat directo'
+              (person.online ? 'Conectado' : 'Desconectado') + ' · abrir mensaje directo'
             "
             (click)="openDirect(person._id)"
           >
             <span class="connection-indicator" aria-hidden="true"></span>
             {{ person.name }}
             <span class="visually-hidden">{{
-              person.online ? '(en el chat)' : '(no está en el chat)'
+              person.online ? '(conectado)' : '(desconectado)'
             }}</span>
           </button>
         </li>
@@ -52,24 +50,15 @@
     <p class="chat-error" role="alert">{{ error() }}</p>
   }
 
-  <nav class="chat-tabs" role="tablist" aria-label="Tipo de chat">
+  <nav class="chat-tabs" role="tablist" aria-label="Tipo de canal">
     <button
       type="button"
       role="tab"
-      [attr.aria-selected]="chatLevel() === 'general'"
-      [class.active]="chatLevel() === 'general'"
-      (click)="setChatLevel('general')"
+      [attr.aria-selected]="chatLevel() === 'notes'"
+      [class.active]="chatLevel() === 'notes'"
+      (click)="setChatLevel('notes')"
     >
-      General
-    </button>
-    <button
-      type="button"
-      role="tab"
-      [attr.aria-selected]="chatLevel() === 'group'"
-      [class.active]="chatLevel() === 'group'"
-      (click)="setChatLevel('group')"
-    >
-      Grupo
+      Notas generales (Admins)
     </button>
     <button
       type="button"
@@ -82,45 +71,9 @@
     </button>
   </nav>
 
-  @if (chatLevel() === 'group') {
-    <section class="room-picker">
-      <h2 class="people-title">Grupos de actividades</h2>
-      @if (joinedActivities().length > 0) {
-        <div class="room-picker-controls">
-          @for (activity of joinedActivities(); track activity._id) {
-            <button type="button" class="secondary" (click)="openActivityRoom(activity._id)">
-              {{ activity.title }}
-            </button>
-          }
-        </div>
-      } @else {
-        <p class="muted">Al apuntarte a una actividad, su grupo aparecerá aquí automáticamente.</p>
-      }
-    </section>
-
-    <form class="room-picker" (ngSubmit)="openGroupRoom()">
-      <label for="group-id">Identificador del grupo</label>
-      <div class="room-picker-controls">
-        <input
-          id="group-id"
-          name="groupId"
-          type="text"
-          [ngModel]="groupId()"
-          (ngModelChange)="setGroupId($event)"
-          placeholder="Por ejemplo, seminario-7"
-          autocomplete="off"
-        />
-        <button type="submit" [disabled]="!connected()">Entrar al grupo</button>
-      </div>
-      <p class="muted">
-        También puedes entrar en un grupo con un identificador compartido.
-      </p>
-    </form>
-  }
-
   @if (chatLevel() === 'direct') {
     <div class="room-picker">
-      <label for="direct-user">Conversación con</label>
+      <label for="direct-user">Conversación directa con</label>
       <select
         id="direct-user"
         name="directUser"
@@ -128,15 +81,15 @@
         (ngModelChange)="selectDirectUser($event)"
         [disabled]="users().length === 0"
       >
-        <option value="">Selecciona un usuario</option>
+        <option value="">Selecciona un administrador</option>
         @for (person of people(); track person._id) {
           <option [value]="person._id">
-            {{ person.name }}{{ person.online ? ' · en el chat' : '' }}
+            {{ person.name }}{{ person.online ? ' · conectado' : '' }}
           </option>
         }
       </select>
       @if (users().length === 0) {
-        <p class="muted">No hay otros usuarios disponibles.</p>
+        <p class="muted">No hay otros administradores registrados.</p>
       }
     </div>
   }
@@ -144,10 +97,8 @@
   <section class="conversation" aria-label="Mensajes de la conversación">
     <div class="conversation-heading">
       <h2>
-        @if (chatLevel() === 'general') {
-          Chat general
-        } @else if (chatLevel() === 'group') {
-          {{ activeRoom() || 'Elige un grupo' }}
+        @if (chatLevel() === 'notes') {
+          Tablón de notas entre administradores
         } @else {
           Conversación directa
         }
@@ -171,9 +122,9 @@
       } @empty {
         <li class="empty-messages">
           @if (connected() && activeRoom()) {
-            Aún no hay mensajes en esta conversación.
+            Aún no hay notas ni mensajes en este canal.
           } @else if (!activeRoom()) {
-            Elige un grupo o un usuario para abrir una conversación.
+            Elige un administrador para abrir una conversación directa.
           } @else {
             Conectando con el chat...
           }
@@ -182,14 +133,14 @@
     </ol>
 
     <form class="message-form" (ngSubmit)="sendMessage()">
-      <label class="visually-hidden" for="message-text">Escribe un mensaje</label>
+      <label class="visually-hidden" for="message-text">Escribe una nota o mensaje</label>
       <input
         id="message-text"
         name="messageText"
         type="text"
         [ngModel]="messageText()"
         (ngModelChange)="messageText.set($event)"
-        placeholder="Escribe un mensaje..."
+        placeholder="Escribe una nota o mensaje..."
         autocomplete="off"
         maxlength="2000"
         [disabled]="!connected() || !activeRoom()"

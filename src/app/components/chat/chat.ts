@@ -15,9 +15,8 @@ import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { ChatMessage, ChatService, ChatUser } from '../../services/chat.service';
 
-type ChatLevel = 'general' | 'group' | 'direct';
+type ChatLevel = 'notes' | 'direct';
 
-// Un usuario de la lista, con su estado de conexión
 export interface ChatPerson extends ChatUser {
   online: boolean;
 }
@@ -34,23 +33,18 @@ export class Chat implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly subscriptions = new Subscription();
 
-  readonly chatLevel = signal<ChatLevel>('general');
+  readonly chatLevel = signal<ChatLevel>('notes');
   readonly connected = signal(false);
   readonly users = signal<ChatUser[]>([]);
-  readonly joinedActivities = signal<{ _id: string; title: string }[]>([]);
   readonly messages = signal<ChatMessage[]>([]);
   readonly selectedUserId = signal('');
-  readonly groupId = signal('');
   readonly messageText = signal('');
   readonly error = signal('');
-  readonly activeRoom = signal('general');
+  readonly activeRoom = signal('admin:notes');
   readonly onlineIds = signal<string[]>([]);
 
-  // El usuario con sesión, para mostrarlo el primero de la lista como "tú"
   readonly me = this.authService.user;
 
-  // Los demás usuarios con su estado: primero los conectados y después por nombre.
-  // computed se recalcula solo cuando cambia la lista de usuarios o la de conectados.
   readonly people = computed<ChatPerson[]>(() => {
     const online = new Set(this.onlineIds());
     return this.users()
@@ -58,13 +52,11 @@ export class Chat implements OnInit, OnDestroy {
       .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
   });
 
-  // Cuántos están conectados, contando al propio usuario si su socket está abierto
   readonly onlineCount = computed(
     () => this.people().filter((person) => person.online).length + (this.connected() ? 1 : 0),
   );
 
   ngOnInit(): void {
-    // Suscribirse antes de conectar evita perder eventos que lleguen pronto.
     this.subscriptions.add(
       this.chatService.connectionStatus$.subscribe((connected) => {
         this.connected.set(connected);
@@ -82,14 +74,12 @@ export class Chat implements OnInit, OnDestroy {
 
     this.subscriptions.add(
       this.chatService.history$.subscribe((history) => {
-        // Los mensajes antiguos de otras salas se ignoran si ya cambiamos de sala.
         this.messages.set(history.filter((message) => message.room === this.activeRoom()));
       }),
     );
 
     this.subscriptions.add(
       this.chatService.messages$.subscribe((message) => {
-        // El servidor puede seguir enviando mensajes de salas anteriores.
         if (message.room === this.activeRoom()) {
           this.messages.update((messages) => [...messages, message]);
         }
@@ -110,27 +100,20 @@ export class Chat implements OnInit, OnDestroy {
       this.chatService.getUsers().subscribe({
         next: (users) => {
           const currentUserId = this.authService.user()?._id;
-          this.users.set(users.filter((user) => user._id !== currentUserId));
+          // Filtramos para listar únicamente otros administradores en el canal interno
+          this.users.set(
+            users.filter(
+              (user) =>
+                user._id !== currentUserId &&
+                (!user.role || user.role.toUpperCase() === 'ADMIN'),
+            ),
+          );
         },
         error: (error: HttpErrorResponse) => {
-          this.error.set(`No se pudo cargar la lista de usuarios: ${error.message}`);
+          this.error.set(`No se pudo cargar la lista de administradores: ${error.message}`);
         },
       }),
     );
-
-    if (this.authService.user()?.role === 'USER') {
-      this.subscriptions.add(
-        this.chatService.getJoinedActivities().subscribe({
-          next: (activities) => {
-            this.joinedActivities.set(activities);
-            activities.forEach((activity) => this.chatService.registerActivityRoom(activity._id));
-          },
-          error: (error: HttpErrorResponse) => {
-            this.error.set(`No se pudieron cargar los grupos de actividades: ${error.message}`);
-          },
-        }),
-      );
-    }
 
     try {
       this.chatService.connect();
@@ -144,42 +127,12 @@ export class Chat implements OnInit, OnDestroy {
   setChatLevel(level: ChatLevel): void {
     this.chatLevel.set(level);
 
-    if (level === 'general') {
-      this.activeRoom.set('general');
-    } else if (level === 'group') {
-      this.activeRoom.set(this.groupId().trim() ? `group:${this.groupId().trim()}` : '');
+    if (level === 'notes') {
+      this.activeRoom.set('admin:notes');
     } else {
       this.activeRoom.set(this.directRoom());
     }
 
-    this.messages.set([]);
-    this.error.set('');
-    this.joinActiveRoom();
-  }
-
-  setGroupId(groupId: string): void {
-    this.groupId.set(groupId);
-  }
-
-  openGroupRoom(): void {
-    const groupId = this.groupId().trim();
-    if (!groupId) {
-      this.error.set('Escribe el identificador del grupo.');
-      return;
-    }
-
-    this.activeRoom.set(`group:${groupId}`);
-    this.messages.set([]);
-    this.error.set('');
-    this.joinActiveRoom();
-  }
-
-  openActivityRoom(activityId: string): void {
-    const activity = this.joinedActivities().find((item) => item._id === activityId);
-    if (!activity) return;
-
-    this.chatLevel.set('group');
-    this.activeRoom.set(`activity:${activity._id}`);
     this.messages.set([]);
     this.error.set('');
     this.joinActiveRoom();
@@ -194,7 +147,6 @@ export class Chat implements OnInit, OnDestroy {
     }
   }
 
-  // Pulsar un usuario de la lista abre el chat directo con él
   openDirect(userId: string): void {
     this.selectedUserId.set(userId);
     this.setChatLevel('direct');
@@ -216,7 +168,6 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Cancela todas las suscripciones y cierra el socket al salir del componente.
     this.subscriptions.unsubscribe();
     this.chatService.disconnect();
   }
@@ -241,7 +192,6 @@ export class Chat implements OnInit, OnDestroy {
       return '';
     }
 
-    // Ambos usuarios generan el mismo identificador, sin importar quién inicia el chat.
     const [firstId, secondId] = [currentUserId, otherUserId].sort();
     return `direct:${firstId}:${secondId}`;
   }

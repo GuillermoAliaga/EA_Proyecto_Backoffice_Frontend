@@ -1,30 +1,12 @@
 <header class="navbar">
   <a class="brand" routerLink="/">Backoffice</a>
 
-  <!-- Las vistas de gestión solo se muestran a administradores; las rutas también están protegidas por guards. -->
   @if (auth.isAdmin()) {
-    <!-- routerLinkActive le pone la clase "active" al enlace de la página en la que estoy -->
     <nav>
       <a routerLink="/users" routerLinkActive="active">Usuarios</a>
       <a routerLink="/activities" routerLinkActive="active">Actividades</a>
       <a routerLink="/reports" routerLinkActive="active">Reportes</a>
-    </nav>
-  } @else if (auth.isLoggedIn()) {
-    <nav>
-      <a routerLink="/activities" routerLinkActive="active">Actividades</a>
-    </nav>
-  }
-
-  @if (auth.canPublishActivities()) {
-    <nav>
-      <a routerLink="/activities/new" routerLinkActive="active">Publicar actividad</a>
-    </nav>
-  }
-
-  @if (auth.isLoggedIn()) {
-    <nav>
       <a routerLink="/chat" routerLinkActive="active">Chat</a>
-      <a routerLink="/reports/new" routerLinkActive="active">Crear reporte</a>
     </nav>
   }
 
@@ -35,7 +17,6 @@
     } @else {
       <nav>
         <a routerLink="/login" routerLinkActive="active">Iniciar sesión</a>
-        <a routerLink="/register" routerLinkActive="active">Registrarse</a>
       </nav>
     }
   </div>

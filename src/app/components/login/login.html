@@ -1,8 +1,5 @@
 <h1>Iniciar sesión</h1>
 
-@if (registered()) {
-  <p class="notice">Cuenta creada. Ya puedes iniciar sesión.</p>
-}
 
 @if (error()) {
   <p class="alert">{{ error() }}</p>
@@ -31,6 +28,5 @@
     <button type="submit" [disabled]="form.invalid || saving()">
       {{ saving() ? 'Entrando...' : 'Entrar' }}
     </button>
-    <a routerLink="/register">No tengo cuenta</a>
   </div>
 </form>

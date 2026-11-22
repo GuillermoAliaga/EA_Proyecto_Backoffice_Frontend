@@ -7,16 +7,13 @@ import { Home } from './components/home/home';
 import { Login } from './components/login/login';
 import { ReportsList } from './components/reports-list/reports-list';
 import { ReportForm } from './components/report-form/report-form';
-import { Register } from './components/register/register';
 import { UserForm } from './components/user-form/user-form';
 import { UsersList } from './components/users-list/users-list';
-import { activityPublisherGuard, adminGuard, authGuard, guestGuard } from './guards/auth.guard';
+import { adminGuard, authGuard, guestGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  // Las pantallas de administración requieren una cuenta ADMIN.
-  { path: '', component: Home, canActivate: [authGuard], title: 'Inicio' },
+  { path: '', component: Home, canActivate: [authGuard, adminGuard], title: 'Inicio' },
   { path: 'login', component: Login, canActivate: [guestGuard], title: 'Iniciar sesión' },
-  { path: 'register', component: Register, canActivate: [guestGuard], title: 'Crear cuenta' },
   { path: 'users', component: UsersList, canActivate: [authGuard, adminGuard], title: 'Usuarios' },
   {
     path: 'users/new',
@@ -33,15 +30,13 @@ export const routes: Routes = [
   {
     path: 'activities',
     component: ActivitiesList,
-    // Cualquier persona con sesión puede consultar las actividades activas.
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
     title: 'Actividades',
   },
   {
     path: 'activities/new',
     component: ActivityForm,
-    // Pueden publicar actividades ADMIN y STORE_HOST.
-    canActivate: [authGuard, activityPublisherGuard],
+    canActivate: [authGuard, adminGuard],
     title: 'Nueva actividad',
   },
   {
@@ -59,8 +54,7 @@ export const routes: Routes = [
   {
     path: 'reports/new',
     component: ReportForm,
-    // Cualquier persona con sesión puede enviar un reporte.
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
     title: 'Nuevo reporte',
   },
   {
@@ -69,6 +63,6 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard],
     title: 'Revisar reporte',
   },
-  { path: 'chat', component: Chat, canActivate: [authGuard], title: 'Chat' },
+  { path: 'chat', component: Chat, canActivate: [authGuard, adminGuard], title: 'Chat' },
   { path: '**', redirectTo: '' },
 ];

@@ -10,6 +10,7 @@ import { AuthService } from './auth.service';
 export interface ChatUser {
   _id: string;
   name: string;
+  role?:string;
 }
 
 export interface ChatMessage {
@@ -73,10 +74,11 @@ export class ChatService {
   private readonly chatErrorSubject = new Subject<ChatError>();
   readonly chatError$ = this.chatErrorSubject.asObservable();
 
-  getUsers(): Observable<ChatUser[]> {
-    // Esta ruta solo devuelve los datos mínimos para mostrar contactos en el chat.
+ getUsers(): Observable<ChatUser[]> {
     return this.http
-      .get<ChatUsersResponse>(`${environment.apiUrl}/users/chat-users`)
+      .get<ChatUsersResponse>(`${environment.apiUrl}/users`, {
+        params: { limit: '100' },
+      })
       .pipe(
         map((response) => {
           const users = response.data ?? response.users;
