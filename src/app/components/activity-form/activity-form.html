@@ -167,32 +167,68 @@
       </label>
     </div>
 
-    <fieldset>
+   <fieldset>
       <legend>Ubicación</legend>
-      <label>
-        Dirección *
-        <input type="text" formControlName="addressName" />
+
+      <div class="field-group">
+        <label for="address-input">Dirección *</label>
+        <div class="custom-select">
+          <input
+            id="address-input"
+            type="text"
+            formControlName="addressName"
+            autocomplete="off"
+            placeholder="Empieza a escribir: Ej. Balmes 100, Barcelona"
+            (input)="onAddressInput($any($event.target).value)"
+          />
+
+          @if (geocoding()) {
+            <small class="muted">Buscando direcciones...</small>
+          }
+
+          @if (addressSuggestions().length > 0) {
+            <div class="select-dropdown">
+              @for (item of addressSuggestions(); track item.label + item.lat) {
+                <div
+                  class="select-option"
+                  role="button"
+                  tabindex="0"
+                  (click)="selectAddressSuggestion(item)"
+                  (keydown.enter)="selectAddressSuggestion(item)"
+                >
+                  <span>{{ item.label }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
         @if (form.controls.addressName.touched && form.controls.addressName.invalid) {
-          <small class="field-error">La dirección es obligatoria.</small>
+          <small class="field-error">La dirección es obligatoria (mínimo 3 caracteres).</small>
         }
-      </label>
+      </div>
+
       <div class="form-grid">
         <label>
-          Latitud *
-          <input type="number" formControlName="latitude" min="-90" max="90" step="any" />
+          Latitud (opcional)
+          <input type="number" formControlName="latitude" min="-90" max="90" step="any" placeholder="Auto" />
           @if (form.controls.latitude.touched && form.controls.latitude.invalid) {
             <small class="field-error">Introduce una latitud entre -90 y 90.</small>
           }
         </label>
         <label>
-          Longitud *
-          <input type="number" formControlName="longitude" min="-180" max="180" step="any" />
+          Longitud (opcional)
+          <input type="number" formControlName="longitude" min="-180" max="180" step="any" placeholder="Auto" />
           @if (form.controls.longitude.touched && form.controls.longitude.invalid) {
             <small class="field-error">Introduce una longitud entre -180 y 180.</small>
           }
         </label>
       </div>
-      <small>Usa grados decimales. Las coordenadas se guardan como longitud y latitud.</small>
+
+      @if (form.hasError('incompleteCoordinates')) {
+        <small class="field-error">Indica tanto latitud como longitud, o deja ambas vacías para calcularlas automáticamente.</small>
+      } @else {
+        <small>Selecciona una sugerencia para rellenar las coordenadas o déjalas vacías para cálculo automático.</small>
+      }
     </fieldset>
 
     <fieldset>
